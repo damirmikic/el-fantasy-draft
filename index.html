@@ -30,11 +30,20 @@
             background-color: #14b8a6; /* teal-500 */
             color: white;
         }
+        /* For the pick notification */
+        #pick-notification.show {
+            transform: translateX(0%);
+        }
     </style>
 </head>
 <body class="text-slate-300">
 
     <div id="app-container">
+        <!-- PICK NOTIFICATION POP-UP -->
+        <div id="pick-notification" class="fixed top-20 right-5 w-80 bg-slate-800 border-2 border-teal-500 text-white p-4 rounded-xl shadow-2xl z-50 transform translate-x-[150%] transition-transform duration-500 ease-in-out">
+            <p class="text-sm text-slate-400 font-bold">New Pick!</p>
+            <p id="notification-text" class="text-lg"></p>
+        </div>
         
         <!-- LANDING SCREEN -->
         <div id="landing-screen" class="min-h-screen flex items-center justify-center p-4">
@@ -93,26 +102,34 @@
 
         <!-- DRAFT SCREEN -->
         <div id="draft-screen" class="hidden max-w-7xl mx-auto p-4 md:p-6">
-            <header class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700 text-center">
-                    <p class="text-slate-400 text-sm">Round / Pick</p>
-                    <p id="round-pick-status" class="text-3xl font-bold text-white">- / -</p>
+            <header id="main-header" class="bg-slate-900/70 backdrop-blur-sm p-4 sticky top-0 z-20 border-b border-slate-700 flex justify-between items-center rounded-t-xl">
+                 <div class="flex items-center space-x-3">
+                     <h1 class="text-2xl font-bold text-white tracking-wider">EuroLeague Fantasy Draft</h1>
                 </div>
-                <div id="on-the-clock-card" class="bg-slate-800/60 p-4 rounded-xl border-2 border-teal-500 text-center">
-                    <p class="text-slate-400 text-sm">On the Clock</p>
-                    <p id="on-the-clock-team" class="text-2xl font-bold text-teal-300 truncate">...</p>
-                </div>
-                <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700 text-center">
-                    <p class="text-slate-400 text-sm">Time Remaining</p>
-                    <div class="w-full bg-slate-700 rounded-full h-2.5 mt-2">
-                        <div id="timer-bar" class="bg-teal-500 h-2.5 rounded-full timer-bar-inner" style="width: 100%"></div>
-                    </div>
-                    <p id="timer-display" class="font-mono text-2xl font-bold text-white mt-1">--:--</p>
-                    <p id="timer-message" class="text-yellow-400 text-xs h-4 mt-1 animate-pulse"></p>
-                </div>
+                <div id="draft-id-header" class="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded"></div>
             </header>
+            <div id="draft-header" class="sticky top-[73px] z-10 bg-slate-900/80 backdrop-blur-sm pt-4 pb-4 px-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700 text-center">
+                        <p class="text-slate-400 text-sm">Round / Pick</p>
+                        <p id="round-pick-status" class="text-3xl font-bold text-white">- / -</p>
+                    </div>
+                    <div id="on-the-clock-card" class="bg-slate-800/60 p-4 rounded-xl border-2 border-teal-500 text-center">
+                        <p class="text-slate-400 text-sm">On the Clock</p>
+                        <p id="on-the-clock-team" class="text-2xl font-bold text-teal-300 truncate">...</p>
+                    </div>
+                    <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700 text-center">
+                        <p class="text-slate-400 text-sm">Time Remaining</p>
+                        <div class="w-full bg-slate-700 rounded-full h-2.5 mt-2">
+                            <div id="timer-bar" class="bg-teal-500 h-2.5 rounded-full timer-bar-inner" style="width: 100%"></div>
+                        </div>
+                        <p id="timer-display" class="font-mono text-2xl font-bold text-white mt-1">--:--</p>
+                        <p id="timer-message" class="text-yellow-400 text-xs h-4 mt-1 animate-pulse"></p>
+                    </div>
+                </div>
+            </div>
 
-            <div id="teams-bar" class="bg-slate-800/60 backdrop-blur-sm p-4 rounded-xl border border-slate-700 mb-6">
+            <div id="teams-bar" class="bg-slate-800/60 backdrop-blur-sm p-4 rounded-xl border border-slate-700 my-6">
                  <div id="teams-bar-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     <!-- Team cards will be injected here -->
                  </div>
@@ -142,9 +159,9 @@
                         </div>
                     </div>
                    
-                    <div class="overflow-x-auto table-scrollbar">
+                    <div class="overflow-y-auto max-h-[55vh] table-scrollbar">
                         <table class="w-full text-left">
-                            <thead class="border-b-2 border-slate-700">
+                            <thead class="border-b-2 border-slate-700 sticky top-0 bg-slate-800">
                                 <tr>
                                     <th class="p-3 w-12"></th>
                                     <th class="p-3">Player</th>
@@ -569,6 +586,7 @@
             adminResetButtonContainer: document.getElementById('admin-reset-button-container'),
             joinForm: document.getElementById('join-form'),
             draftIdDisplay: document.getElementById('draft-id-display'),
+            draftIdHeader: document.getElementById('draft-id-header'),
             newDraftButton: document.getElementById('new-draft-button'),
             createDraftButton: document.getElementById('create-draft-button'),
             joinDraftIdInput: document.getElementById('join-draft-id-input'),
@@ -635,6 +653,8 @@
         function renderDraftScreen() {
             const { players, users, draftOrder, currentPickIndex, timePerPick, createdBy } = appState.draft;
             
+            elements.draftIdHeader.textContent = `ID: ${draftId}`;
+
             const numTeams = Object.keys(users).length;
             if (numTeams === 0) return;
             const currentTurnUid = draftOrder[currentPickIndex];
@@ -730,14 +750,10 @@
         function renderDraftBoard() {
             const { players, users, draftOrder } = appState.draft;
             const numTeams = Object.keys(users).length;
+            const allPicks = players.filter(p => p.draftedBy).sort((a,b) => a.pickNumber - b.pickNumber);
 
             elements.draftBoardBody.innerHTML = draftOrder.map((uid, index) => {
-                const player = players.find(p => p.draftedBy === uid && players.filter(pl => pl.draftedBy === uid).map(pl=>pl.id).includes(p.id));
-                const pickedPlayer = players.find(p => p.draftedBy === uid && p.pickNumber === index);
-                 const allPicks = players.filter(p => p.draftedBy).sort((a,b) => a.pickNumber - b.pickNumber);
-                 const currentPickPlayer = allPicks[index];
-
-
+                const currentPickPlayer = allPicks.find(p => p.pickNumber === index);
                 const round = Math.floor(index / numTeams) + 1;
                 const pick = (index % numTeams) + 1;
 
@@ -956,6 +972,19 @@
             renderDraftScreen();
         }
 
+        function showPickNotification(player, team) {
+            const notificationEl = document.getElementById('pick-notification');
+            const textEl = document.getElementById('notification-text');
+
+            textEl.innerHTML = `<span class="text-teal-400">${player.name}</span> picked by <span class="text-yellow-400">${team.name}</span>`;
+            
+            notificationEl.classList.add('show');
+
+            setTimeout(() => {
+                notificationEl.classList.remove('show');
+            }, 5000);
+        }
+
         // --- MAIN APP LOGIC ---
         function initialize() {
             if (!draftId) {
@@ -1018,7 +1047,9 @@
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     appState.user = user;
+                    let isFirstLoad = true;
                     onSnapshot(draftDocRef, (docSnap) => {
+                        const previousDraftState = appState.draft;
                         if (docSnap.exists()) {
                             appState.draft = docSnap.data();
                         } else if(appState.user) {
@@ -1032,8 +1063,20 @@
                                 createdBy: appState.user.uid,
                              });
                         }
+                        
+                        // Pick notification logic
+                        if (!isFirstLoad && previousDraftState && previousDraftState.status === 'drafting' && appState.draft.currentPickIndex > previousDraftState.currentPickIndex) {
+                            const lastPickIndex = previousDraftState.currentPickIndex;
+                            const newPick = appState.draft.players.find(p => p.pickNumber === lastPickIndex);
+                            const drafterTeam = appState.draft.users[newPick.draftedBy];
+                            if (newPick && drafterTeam) {
+                                showPickNotification(newPick, drafterTeam);
+                            }
+                        }
+
                         render();
                         renderFilterControls();
+                        isFirstLoad = false;
                     });
                 } else {
                     signInAnonymously(auth);
