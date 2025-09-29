@@ -140,6 +140,7 @@
                     <nav class="-mb-px flex space-x-6" id="draft-tabs">
                         <button data-tab="players" class="tab-button active whitespace-nowrap py-3 px-1 border-b-2 font-medium text-lg border-teal-500 text-teal-400">Available Players</button>
                         <button data-tab="board" class="tab-button whitespace-nowrap py-3 px-1 border-b-2 font-medium text-lg border-transparent text-slate-400 hover:text-white hover:border-slate-300">Draft Board</button>
+                        <button data-tab="myteam" class="tab-button whitespace-nowrap py-3 px-1 border-b-2 font-medium text-lg border-transparent text-slate-400 hover:text-white hover:border-slate-300">My Team</button>
                     </nav>
                 </div>
 
@@ -189,6 +190,21 @@
                         </table>
                     </div>
                 </div>
+                
+                <div id="my-team-tab-content" class="hidden">
+                     <div class="overflow-y-auto max-h-[60vh] table-scrollbar">
+                        <table class="w-full text-left">
+                            <thead class="border-b-2 border-slate-700 sticky top-0 bg-slate-800">
+                                <tr>
+                                    <th class="p-3">Player</th>
+                                    <th class="p-3 text-center">Position</th>
+                                    <th class="p-3 text-center">Price</th>
+                                </tr>
+                            </thead>
+                            <tbody id="my-team-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
 
             </div>
              <div class="mt-8 text-center" id="admin-reset-button-container"></div>
@@ -224,7 +240,7 @@
             appId: "1:135822329305:web:56b5a49dd8c33aa20345c8",
         };
         const appId = 'el-fantasy-draft-single-file'; // Unique ID for this app's data
-        const ROSTER_SIZE = { 'Guard': 4, 'Forward': 4, 'Center': 2 };
+        const ROSTER_SIZE = { 'Guard': 5, 'Forward': 5, 'Center': 3 };
         const TOTAL_ROUNDS = Object.values(ROSTER_SIZE).reduce((a, b) => a + b, 0);
         const FUNNY_MESSAGES = [
             "The clock is mocking you.", "Feeling the pressure?", "Are you building a team or a nap schedule?",
@@ -582,6 +598,7 @@
             teamsBarGrid: document.getElementById('teams-bar-grid'),
             playersTableBody: document.getElementById('players-table-body'),
             draftBoardBody: document.getElementById('draft-board-body'),
+            myTeamTableBody: document.getElementById('my-team-table-body'),
             finalRosters: document.getElementById('final-rosters'),
             adminResetButtonContainer: document.getElementById('admin-reset-button-container'),
             joinForm: document.getElementById('join-form'),
@@ -596,6 +613,7 @@
             draftTabs: document.getElementById('draft-tabs'),
             playersTabContent: document.getElementById('players-tab-content'),
             boardTabContent: document.getElementById('board-tab-content'),
+            myTeamTabContent: document.getElementById('my-team-tab-content'),
         };
         
         // --- RENDER FUNCTIONS ---
@@ -683,8 +701,10 @@
             // Render correct tab
             if (appState.activeTab === 'players') {
                 renderAvailablePlayers();
-            } else {
+            } else if (appState.activeTab === 'board') {
                 renderDraftBoard();
+            } else {
+                renderMyTeam();
             }
             
             if (appState.user && createdBy === appState.user.uid) {
@@ -766,6 +786,30 @@
                 `;
             }).join('');
         }
+
+        function renderMyTeam() {
+            if (!appState.user) return;
+            const { players } = appState.draft;
+            const myRoster = players.filter(p => p.draftedBy === appState.user.uid)
+                .sort((a, b) => {
+                    const positionOrder = { 'Guard': 1, 'Forward': 2, 'Center': 3 };
+                    return positionOrder[a.position] - positionOrder[b.position] || b.credits - a.credits;
+                });
+            
+            elements.myTeamTableBody.innerHTML = myRoster.map(p => {
+                 return `
+                    <tr class="border-b border-slate-800">
+                        <td class="p-3">
+                            <p class="font-bold text-white tracking-wide">${p.name}</p>
+                            <p class="text-sm text-slate-500">${p.team}</p>
+                        </td>
+                        <td class="p-3 text-center text-sm font-semibold text-slate-400">${p.position}</td>
+                        <td class="p-3 text-center font-semibold text-teal-400 text-lg">${p.credits.toFixed(1)}</td>
+                    </tr>
+                `
+            }).join('');
+        }
+
 
         function renderFinishedScreen() {
             const { players, users } = appState.draft;
@@ -905,21 +949,45 @@
         async function handleAutoPick() {
             const { players } = appState.draft;
             const myTeamRoster = players.filter(pl => pl.draftedBy === appState.user.uid);
-            
-            const bestAvailablePlayer = players
-                .filter(p => !p.draftedBy)
-                .sort((a,b) => b.credits - a.credits)
-                .find(p => {
-                    const positionCount = myTeamRoster.filter(pl => pl.position === p.position).length;
-                    return positionCount < ROSTER_SIZE[p.position];
-                });
 
-            if(bestAvailablePlayer) {
-                await handleDraftPlayer(bestAvailablePlayer.id);
-            } else {
-                 await updateDoc(draftDocRef, { currentPickIndex: appState.draft.currentPickIndex + 1, pickStartTime: Date.now() });
+            const counts = { Guard: 0, Forward: 0, Center: 0 };
+            myTeamRoster.forEach(p => { counts[p.position]++; });
+
+            const availablePlayers = players.filter(p => !p.draftedBy).sort((a,b) => b.credits - a.credits);
+
+            // 1. Check watchlist for a needed position
+            const watchlistPlayers = availablePlayers.filter(p => appState.watchlist.includes(p.id));
+            for (const player of watchlistPlayers) {
+                if (counts[player.position] < ROSTER_SIZE[player.position]) {
+                    await handleDraftPlayer(player.id);
+                    return;
+                }
             }
+
+            // 2. Check all available players for a needed position
+            for (const player of availablePlayers) {
+                if (counts[player.position] < ROSTER_SIZE[player.position]) {
+                    await handleDraftPlayer(player.id);
+                    return;
+                }
+            }
+            
+            // 3. If all required positions are full, draft best available from watchlist (bench)
+            if(watchlistPlayers.length > 0) {
+                await handleDraftPlayer(watchlistPlayers[0].id);
+                return;
+            }
+
+            // 4. If watchlist empty, draft best available overall (bench)
+            if (availablePlayers.length > 0) {
+                await handleDraftPlayer(availablePlayers[0].id);
+                return;
+            }
+
+            // 5. If no players left, advance pick
+            await updateDoc(draftDocRef, { currentPickIndex: appState.draft.currentPickIndex + 1, pickStartTime: Date.now() });
         }
+
 
         async function handleResetDraft() {
             if (!confirm("Are you sure you want to reset the entire draft?")) return;
@@ -960,6 +1028,7 @@
             appState.activeTab = tab;
             elements.playersTabContent.classList.toggle('hidden', tab !== 'players');
             elements.boardTabContent.classList.toggle('hidden', tab !== 'board');
+            elements.myTeamTabContent.classList.toggle('hidden', tab !== 'myteam');
             
             document.querySelectorAll('.tab-button').forEach(btn => {
                 const isActive = btn.dataset.tab === tab;
