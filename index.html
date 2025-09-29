@@ -48,7 +48,7 @@
         
         <!-- LANDING SCREEN -->
         <div id="landing-screen" class="min-h-screen flex items-center justify-center p-4">
-            <div class="max-w-md w-full mx-auto bg-slate-800/50 backdrop-blur-md p-8 rounded-2xl border border-slate-700 shadow-2xl shadow-black/30 text-center">
+            <div class="max-w-md w-full mx-auto bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-2xl shadow-black/30 text-center">
                 <h1 class="text-4xl font-bold text-white mb-2">Welcome!</h1>
                 <p class="text-slate-400 mb-8">Create a new draft room to share with friends, or join an existing one using its ID.</p>
                 <div class="space-y-4">
@@ -65,7 +65,7 @@
 
         <!-- DRAFT SCREEN -->
         <div id="draft-screen" class="hidden max-w-7xl mx-auto p-4 md:p-6">
-            <header id="main-header" class="bg-slate-900/70 backdrop-blur-sm p-4 sticky top-0 z-20 border-b border-slate-700 flex justify-between items-center rounded-t-xl">
+            <header id="main-header" class="bg-slate-900 p-4 sticky top-0 z-20 border-b border-slate-700 flex justify-between items-center rounded-t-xl">
                  <div class="flex items-center space-x-3">
                      <h1 class="text-2xl font-bold text-white tracking-wider">EuroLeague Fantasy Draft</h1>
                 </div>
@@ -73,17 +73,17 @@
             </header>
             
             <!-- LIVE DRAFT HEADER (Timer, On the Clock) -->
-            <div id="draft-header" class="hidden sticky top-[73px] z-10 bg-slate-900/80 backdrop-blur-sm pt-4 pb-4 px-4">
+            <div id="draft-header" class="hidden sticky top-[73px] z-10 bg-slate-900 pt-4 pb-4 px-4">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700 text-center">
+                    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 text-center">
                         <p class="text-slate-400 text-sm">Round / Pick</p>
                         <p id="round-pick-status" class="text-3xl font-bold text-white">- / -</p>
                     </div>
-                    <div id="on-the-clock-card" class="bg-slate-800/60 p-4 rounded-xl border-2 border-teal-500 text-center">
+                    <div id="on-the-clock-card" class="bg-slate-800 p-4 rounded-xl border-2 border-teal-500 text-center">
                         <p class="text-slate-400 text-sm">On the Clock</p>
                         <p id="on-the-clock-team" class="text-2xl font-bold text-teal-300 truncate">...</p>
                     </div>
-                    <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700 text-center">
+                    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 text-center">
                         <p class="text-slate-400 text-sm">Time Remaining</p>
                         <div class="w-full bg-slate-700 rounded-full h-2.5 mt-2">
                             <div id="timer-bar" class="bg-teal-500 h-2.5 rounded-full timer-bar-inner" style="width: 100%"></div>
@@ -95,7 +95,7 @@
             </div>
             
             <!-- PRE-DRAFT LOBBY (Join form, Admin Controls) -->
-            <div id="pre-draft-lobby" class="hidden bg-slate-800/60 backdrop-blur-sm p-6 rounded-xl border border-slate-700 my-6">
+            <div id="pre-draft-lobby" class="hidden bg-slate-800 p-6 rounded-xl border border-slate-700 my-6">
                 <div class="text-center mb-4">
                     <p class="text-slate-400 mb-2">Share this Room ID with your friends so they can join.</p>
                     <div class="bg-slate-900/50 p-2 rounded-md inline-block font-mono text-lg text-teal-300 tracking-widest cursor-pointer" id="draft-id-display" title="Click to copy Room ID"></div>
@@ -121,13 +121,13 @@
                 </div>
             </div>
 
-            <div id="teams-bar" class="bg-slate-800/60 backdrop-blur-sm p-4 rounded-xl border border-slate-700 my-6">
+            <div id="teams-bar" class="bg-slate-800 p-4 rounded-xl border border-slate-700 my-6">
                  <div id="teams-bar-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     <!-- Team cards will be injected here -->
                  </div>
             </div>
 
-            <div class="bg-slate-800/60 backdrop-blur-sm p-4 rounded-xl border border-slate-700">
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
                 <div class="border-b border-slate-700 mb-4">
                     <nav class="-mb-px flex space-x-6" id="draft-tabs">
                         <button data-tab="players" class="tab-button active whitespace-nowrap py-3 px-1 border-b-2 font-medium text-lg border-teal-500 text-teal-400">Available Players</button>
@@ -204,7 +204,7 @@
         
         <!-- FINISHED SCREEN -->
         <div id="finished-screen" class="hidden min-h-screen flex items-center justify-center p-4">
-             <div class="max-w-6xl w-full mx-auto bg-slate-800/50 backdrop-blur-md p-8 rounded-2xl border border-slate-700 shadow-2xl shadow-black/30 text-center">
+             <div class="max-w-6xl w-full mx-auto bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-2xl shadow-black/30 text-center">
                  <h1 class="text-5xl font-bold text-teal-400 mb-4">Draft Complete!</h1>
                  <p class="text-slate-400 mb-8 text-lg">The draft is officially over. Here are the final team rosters.</p>
                  <div id="final-rosters" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -1153,7 +1153,6 @@
     </script>
 </body>
 </html>
-
 
 
 
