@@ -62,44 +62,6 @@
             </div>
         </div>
 
-
-        <!-- SETUP SCREEN -->
-        <div id="setup-screen" class="hidden min-h-screen flex items-center justify-center p-4">
-            <div class="max-w-3xl w-full mx-auto bg-slate-800/50 backdrop-blur-md p-8 rounded-2xl border border-slate-700 shadow-2xl shadow-black/30 text-center">
-                <h1 class="text-4xl font-bold text-white mb-2">Draft Room Setup</h1>
-                <p class="text-slate-400 mb-2">Share the Room ID with your friends so they can join.</p>
-                <div class="bg-slate-900/50 p-2 rounded-md inline-block mb-6 font-mono text-lg text-teal-300 tracking-widest cursor-pointer" id="draft-id-display" title="Click to copy Room ID"></div>
-                
-                <div id="join-form" class="flex flex-col sm:flex-row gap-4 mb-8 max-w-lg mx-auto">
-                    <input type="text" id="team-name-input" placeholder="Enter your team name" class="w-full bg-slate-700 border-slate-600 rounded-md py-3 px-4 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition text-lg" />
-                    <button id="join-button" class="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg shadow-teal-500/20 text-lg">
-                        Join Draft
-                    </button>
-                </div>
-                
-                <div id="admin-controls" class="hidden my-6 max-w-lg mx-auto">
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <div class="flex-grow">
-                            <label for="time-per-pick-input" class="block text-sm font-medium text-slate-400 mb-1 text-left">Time per Pick (seconds)</label>
-                            <input type="number" id="time-per-pick-input" value="60" class="w-full bg-slate-700 border-slate-600 rounded-md py-3 px-4 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition text-lg" />
-                        </div>
-                        <div class="self-end w-full sm:w-auto">
-                            <button id="start-button" class="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-bold py-3 px-8 rounded-lg transition-transform transform hover:scale-105 shadow-lg shadow-blue-500/20 text-lg">
-                                Start Draft
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-slate-900/50 p-4 rounded-lg">
-                    <h3 class="text-xl font-semibold mb-4 text-white">Joined Teams</h3>
-                    <div id="teams-list" class="space-y-2 max-h-60 overflow-y-auto">
-                        <p class="text-slate-500 py-4">No teams have joined yet.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- DRAFT SCREEN -->
         <div id="draft-screen" class="hidden max-w-7xl mx-auto p-4 md:p-6">
             <header id="main-header" class="bg-slate-900/70 backdrop-blur-sm p-4 sticky top-0 z-20 border-b border-slate-700 flex justify-between items-center rounded-t-xl">
@@ -108,7 +70,9 @@
                 </div>
                 <div id="draft-id-header" class="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded"></div>
             </header>
-            <div id="draft-header" class="sticky top-[73px] z-10 bg-slate-900/80 backdrop-blur-sm pt-4 pb-4 px-4">
+            
+            <!-- LIVE DRAFT HEADER (Timer, On the Clock) -->
+            <div id="draft-header" class="hidden sticky top-[73px] z-10 bg-slate-900/80 backdrop-blur-sm pt-4 pb-4 px-4">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700 text-center">
                         <p class="text-slate-400 text-sm">Round / Pick</p>
@@ -125,6 +89,33 @@
                         </div>
                         <p id="timer-display" class="font-mono text-2xl font-bold text-white mt-1">--:--</p>
                         <p id="timer-message" class="text-yellow-400 text-xs h-4 mt-1 animate-pulse"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PRE-DRAFT LOBBY (Join form, Admin Controls) -->
+            <div id="pre-draft-lobby" class="hidden bg-slate-800/60 backdrop-blur-sm p-6 rounded-xl border border-slate-700 my-6">
+                <div class="text-center mb-4">
+                    <p class="text-slate-400 mb-2">Share this Room ID with your friends so they can join.</p>
+                    <div class="bg-slate-900/50 p-2 rounded-md inline-block font-mono text-lg text-teal-300 tracking-widest cursor-pointer" id="draft-id-display" title="Click to copy Room ID"></div>
+                </div>
+                 <div id="join-form" class="flex flex-col sm:flex-row gap-4 mb-4 max-w-lg mx-auto">
+                    <input type="text" id="team-name-input" placeholder="Enter your team name" class="w-full bg-slate-700 border-slate-600 rounded-md py-3 px-4 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition text-lg" />
+                    <button id="join-button" class="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg shadow-teal-500/20 text-lg">
+                        Join Draft
+                    </button>
+                </div>
+                 <div id="admin-controls" class="hidden my-6 max-w-lg mx-auto">
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <div class="flex-grow">
+                            <label for="time-per-pick-input" class="block text-sm font-medium text-slate-400 mb-1 text-left">Time per Pick (seconds)</label>
+                            <input type="number" id="time-per-pick-input" value="60" class="w-full bg-slate-700 border-slate-600 rounded-md py-3 px-4 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition text-lg" />
+                        </div>
+                        <div class="self-end w-full sm:w-auto">
+                            <button id="start-button" class="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-bold py-3 px-8 rounded-lg transition-transform transform hover:scale-105 shadow-lg shadow-blue-500/20 text-lg">
+                                Start Draft
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -578,14 +569,12 @@
         // --- DOM ELEMENTS ---
         const screens = {
             landing: document.getElementById('landing-screen'),
-            setup: document.getElementById('setup-screen'),
             draft: document.getElementById('draft-screen'),
             finished: document.getElementById('finished-screen'),
         };
         const elements = {
             teamNameInput: document.getElementById('team-name-input'),
             joinButton: document.getElementById('join-button'),
-            teamsList: document.getElementById('teams-list'),
             adminControls: document.getElementById('admin-controls'),
             timePerPickInput: document.getElementById('time-per-pick-input'),
             startButton: document.getElementById('start-button'),
@@ -614,6 +603,8 @@
             playersTabContent: document.getElementById('players-tab-content'),
             boardTabContent: document.getElementById('board-tab-content'),
             myTeamTabContent: document.getElementById('my-team-tab-content'),
+            preDraftLobby: document.getElementById('pre-draft-lobby'),
+            draftHeader: document.getElementById('draft-header'),
         };
         
         // --- RENDER FUNCTIONS ---
@@ -633,71 +624,77 @@
             
             const { status } = appState.draft;
 
-            if (status === 'setup') {
-                switchScreen('setup');
-                renderSetupScreen();
-            } else if (status === 'drafting') {
-                switchScreen('draft');
-                renderDraftScreen();
-            } else if (status === 'finished') {
+            if (status === 'finished') {
                 switchScreen('finished');
                 renderFinishedScreen();
-            }
-        }
-
-        function renderSetupScreen() {
-            const { users, createdBy } = appState.draft;
-            const userIds = Object.keys(users);
-
-            elements.draftIdDisplay.textContent = draftId;
-
-            if (appState.user && createdBy === appState.user.uid) {
-                elements.adminControls.classList.remove('hidden');
-            }
-            
-            if (appState.user && users[appState.user.uid]) {
-                elements.joinForm.classList.add('hidden');
-            }
-
-            if (userIds.length > 0) {
-                elements.teamsList.innerHTML = userIds.map(uid => `
-                    <div class="bg-slate-700 p-3 rounded-md text-center font-semibold">${users[uid].name}</div>
-                `).join('');
             } else {
-                elements.teamsList.innerHTML = `<p class="text-slate-500 py-4">No teams have joined yet.</p>`;
+                switchScreen('draft');
+                renderDraftScreen();
             }
         }
 
         function renderDraftScreen() {
-            const { players, users, draftOrder, currentPickIndex, timePerPick, createdBy } = appState.draft;
+            const { status, players, users, draftOrder, currentPickIndex, timePerPick, createdBy } = appState.draft;
             
             elements.draftIdHeader.textContent = `ID: ${draftId}`;
 
-            const numTeams = Object.keys(users).length;
-            if (numTeams === 0) return;
-            const currentTurnUid = draftOrder[currentPickIndex];
-            const currentTurnTeam = users[currentTurnUid];
-            const isMyTurn = appState.user && appState.user.uid === currentTurnUid;
-
-            elements.roundPickStatus.textContent = `${Math.floor(currentPickIndex / numTeams) + 1} / ${currentPickIndex % numTeams + 1}`;
-            elements.onTheClockTeam.textContent = currentTurnTeam ? currentTurnTeam.name : '...';
-            elements.onTheClockCard.classList.toggle('current-turn-glow', isMyTurn);
+            const isDrafting = status === 'drafting';
             
-            elements.teamsBarGrid.innerHTML = Object.entries(users).map(([uid, teamData]) => {
+            elements.preDraftLobby.classList.toggle('hidden', isDrafting);
+            elements.draftHeader.classList.toggle('hidden', !isDrafting);
+            
+            const numTeams = Object.keys(users).length;
+            if (numTeams === 0 && isDrafting) return; // Should not happen but a safeguard
+            
+            // --- RENDER TEAMS BAR ---
+            const teamsMap = Object.entries(users).reduce((acc, [uid, teamData]) => {
                 const roster = players.filter(p => p.draftedBy === uid);
                 const counts = { Guard: 0, Forward: 0, Center: 0 };
                 roster.forEach(p => { counts[p.position]++; });
+                acc[uid] = { ...teamData, uid, counts };
+                return acc;
+            }, {});
 
+            let teamsToDisplay = Object.values(teamsMap);
+            let currentTurnUid = null;
+
+            if (isDrafting) {
+                currentTurnUid = draftOrder[currentPickIndex];
+                const upcomingPicks = draftOrder.slice(currentPickIndex);
+                const uniqueUpcomingTeams = [...new Set(upcomingPicks)];
+                teamsToDisplay = uniqueUpcomingTeams.map(uid => teamsMap[uid]).filter(Boolean);
+
+                const currentTurnTeam = users[currentTurnUid];
+                const isMyTurn = appState.user && appState.user.uid === currentTurnUid;
+
+                elements.roundPickStatus.textContent = `${Math.floor(currentPickIndex / numTeams) + 1} / ${currentPickIndex % numTeams + 1}`;
+                elements.onTheClockTeam.textContent = currentTurnTeam ? currentTurnTeam.name : '...';
+                elements.onTheClockCard.classList.toggle('current-turn-glow', isMyTurn);
+                startTimer(timePerPick);
+
+            } else {
+                 // Pre-draft lobby logic
+                elements.draftIdDisplay.textContent = draftId;
+                if (appState.user && createdBy === appState.user.uid) {
+                    elements.adminControls.classList.remove('hidden');
+                }
+                if (appState.user && users[appState.user.uid]) {
+                    elements.joinForm.classList.add('hidden');
+                }
+            }
+            
+            elements.teamsBarGrid.innerHTML = teamsToDisplay.map(teamData => {
                 return `
-                    <div class="p-3 rounded-lg border-2 ${uid === currentTurnUid ? 'bg-teal-900/50 border-teal-500' : 'bg-slate-700 border-transparent'}">
+                    <div class="p-3 rounded-lg border-2 ${teamData.uid === currentTurnUid ? 'bg-teal-900/50 border-teal-500' : 'bg-slate-700 border-transparent'}">
                         <p class="font-bold text-white truncate">${teamData.name}</p>
                         <p class="text-xs text-slate-400">
-                            G:${ROSTER_SIZE.Guard - counts.Guard} F:${ROSTER_SIZE.Forward - counts.Forward} C:${ROSTER_SIZE.Center - counts.Center}
+                            G:${ROSTER_SIZE.Guard - teamData.counts.Guard} F:${ROSTER_SIZE.Forward - teamData.counts.Forward} C:${ROSTER_SIZE.Center - teamData.counts.Center}
                         </p>
                     </div>
                 `;
             }).join('');
-            
+
+
             // Render correct tab
             if (appState.activeTab === 'players') {
                 renderAvailablePlayers();
@@ -714,13 +711,11 @@
                     </button>
                 `;
             }
-
-            startTimer(timePerPick);
         }
 
         function renderAvailablePlayers() {
-            const { players } = appState.draft;
-            const isMyTurn = appState.user && appState.user.uid === appState.draft.draftOrder[appState.draft.currentPickIndex];
+            const { players, status, draftOrder, currentPickIndex } = appState.draft;
+            const isMyTurn = status === 'drafting' && appState.user && appState.user.uid === draftOrder[currentPickIndex];
 
             const filteredPlayers = players.filter(p => {
                 const isOnWatchlist = appState.watchlist.includes(p.id);
