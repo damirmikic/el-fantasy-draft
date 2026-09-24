@@ -228,7 +228,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- CONFIGURATION ---
         const firebaseConfig = {
@@ -912,6 +912,11 @@
         }
 
         // --- TIMER LOGIC ---
+        // pickStartTime is written with serverTimestamp() rather than each client's own
+        // Date.now(), so every client (and the fallback auto-pick check) measures elapsed
+        // time against the same real start instant instead of whichever device's clock
+        // happened to write the pick - a skewed writer's clock could otherwise make the
+        // countdown run well past the configured duration for everyone else.
         function startTimer(duration) {
             clearInterval(appState.timerInterval);
             if (!appState.draft.pickStartTime) return;
@@ -925,7 +930,7 @@
                 appState.timerPickIndex = currentIndex;
             }
 
-            const startTime = appState.draft.pickStartTime;
+            const startTime = appState.draft.pickStartTime.toMillis();
             let lastMessage = '';
             
             appState.timerInterval = setInterval(() => {
@@ -1004,7 +1009,7 @@
                 draftOrder: order,
                 currentPickIndex: 0,
                 timePerPick: parseInt(elements.timePerPickInput.value, 10) || 60,
-                pickStartTime: Date.now(),
+                pickStartTime: serverTimestamp(),
             });
         }
         
@@ -1037,7 +1042,7 @@
                         players: updatedPlayers,
                         currentPickIndex: currentPickIndex + 1,
                         status: isLastPick ? 'finished' : 'drafting',
-                        pickStartTime: isLastPick ? null : Date.now(),
+                        pickStartTime: isLastPick ? null : serverTimestamp(),
                     });
                 });
             } catch (e) {
@@ -1058,7 +1063,7 @@
                     transaction.update(draftDocRef, {
                         currentPickIndex: data.currentPickIndex + 1,
                         status: isLastPick ? 'finished' : 'drafting',
-                        pickStartTime: isLastPick ? null : Date.now(),
+                        pickStartTime: isLastPick ? null : serverTimestamp(),
                     });
                 });
             } catch (e) {
@@ -1128,7 +1133,7 @@
             const { status, draftOrder, currentPickIndex, pickStartTime, timePerPick } = appState.draft;
             if (status !== 'drafting') return;
             if (currentPickIndex !== scheduledForIndex) return;
-            if (!pickStartTime || Date.now() < pickStartTime + timePerPick * 1000 + AUTO_PICK_GRACE_MS) return;
+            if (!pickStartTime || Date.now() < pickStartTime.toMillis() + timePerPick * 1000 + AUTO_PICK_GRACE_MS) return;
 
             const targetUid = draftOrder[currentPickIndex];
             // No access to the absent team's watchlist from here - pick by need/price only.
