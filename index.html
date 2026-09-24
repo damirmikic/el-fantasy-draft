@@ -228,7 +228,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- CONFIGURATION ---
         const firebaseConfig = {
@@ -608,7 +608,14 @@
             watchlistOnly: false,
             watchlist: [],
             searchTerm: '',
+            timerPickIndex: null,
+            fallbackTimeoutHandle: null,
+            fallbackScheduledForIndex: null,
         };
+
+        // How long other clients wait after the timer hits 0 before stepping in
+        // to auto-pick on behalf of a team whose own browser isn't connected.
+        const AUTO_PICK_GRACE_MS = 5000;
 
         // --- FIREBASE INITIALIZATION ---
         const app = initializeApp(firebaseConfig);
@@ -909,6 +916,15 @@
             clearInterval(appState.timerInterval);
             if (!appState.draft.pickStartTime) return;
 
+            const currentIndex = appState.draft.currentPickIndex;
+            if (appState.timerPickIndex !== currentIndex) {
+                // A new pick started - drop any fallback timer left over from the previous pick.
+                clearTimeout(appState.fallbackTimeoutHandle);
+                appState.fallbackTimeoutHandle = null;
+                appState.fallbackScheduledForIndex = null;
+                appState.timerPickIndex = currentIndex;
+            }
+
             const startTime = appState.draft.pickStartTime;
             let lastMessage = '';
             
@@ -940,8 +956,17 @@
 
                 if (remaining <= 0) {
                     clearInterval(appState.timerInterval);
-                    if (appState.user && appState.user.uid === appState.draft.draftOrder[appState.draft.currentPickIndex]) {
-                       handleAutoPick();
+                    const targetUid = appState.draft.draftOrder[currentIndex];
+                    if (appState.user && appState.user.uid === targetUid) {
+                        // It's our own turn - auto-pick right away, using our own watchlist.
+                        handleAutoPick();
+                    } else if (appState.fallbackScheduledForIndex !== currentIndex) {
+                        // Give the team on the clock a grace period in case their own
+                        // browser is just slow to react, then step in on their behalf.
+                        appState.fallbackScheduledForIndex = currentIndex;
+                        appState.fallbackTimeoutHandle = setTimeout(() => {
+                            handleTimeoutFallbackPick(currentIndex);
+                        }, AUTO_PICK_GRACE_MS);
                     }
                 }
             }, 1000);
@@ -980,39 +1005,82 @@
             });
         }
         
-        async function handleDraftPlayer(playerId) {
-            const { players, currentPickIndex, draftOrder } = appState.draft;
-            const playerToDraft = players.find(p => p.id === playerId);
-            if (!playerToDraft || playerToDraft.draftedBy) return;
+        // Drafts playerId for whoever is on the clock, per the server's current state -
+        // not the caller's own uid. This lets any connected client safely execute a pick
+        // on behalf of an absent team (see handleTimeoutFallbackPick below). expectedPickIndex,
+        // when given, aborts the write if the pick has already moved on (e.g. someone else
+        // already picked), preventing two clients from racing into the same slot.
+        async function handleDraftPlayer(playerId, expectedPickIndex = null) {
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(draftDocRef);
+                    if (!snap.exists()) return;
+                    const data = snap.data();
+                    const { players, currentPickIndex, draftOrder, status } = data;
+                    if (status !== 'drafting') return;
+                    if (expectedPickIndex !== null && currentPickIndex !== expectedPickIndex) return;
 
-            const updatedPlayers = players.map(p =>
-                p.id === playerId ? { ...p, draftedBy: appState.user.uid, pickNumber: currentPickIndex } : p
-            );
-            
-            const isLastPick = currentPickIndex + 1 >= draftOrder.length;
+                    const playerToDraft = players.find(p => p.id === playerId);
+                    if (!playerToDraft || playerToDraft.draftedBy) return;
 
-            await updateDoc(draftDocRef, {
-                players: updatedPlayers,
-                currentPickIndex: currentPickIndex + 1,
-                status: isLastPick ? 'finished' : 'drafting',
-                pickStartTime: isLastPick ? null : Date.now(),
-            });
+                    const pickerUid = draftOrder[currentPickIndex];
+                    const updatedPlayers = players.map(p =>
+                        p.id === playerId ? { ...p, draftedBy: pickerUid, pickNumber: currentPickIndex } : p
+                    );
+
+                    const isLastPick = currentPickIndex + 1 >= draftOrder.length;
+
+                    transaction.update(draftDocRef, {
+                        players: updatedPlayers,
+                        currentPickIndex: currentPickIndex + 1,
+                        status: isLastPick ? 'finished' : 'drafting',
+                        pickStartTime: isLastPick ? null : Date.now(),
+                    });
+                });
+            } catch (e) {
+                console.error('Draft pick failed', e);
+            }
         }
-        
-        async function handleAutoPick() {
+
+        // Advances the pick without drafting anyone, for the rare case no players are left.
+        async function advancePickWithoutDrafting(expectedPickIndex) {
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(draftDocRef);
+                    if (!snap.exists()) return;
+                    const data = snap.data();
+                    if (data.status !== 'drafting' || data.currentPickIndex !== expectedPickIndex) return;
+
+                    const isLastPick = data.currentPickIndex + 1 >= data.draftOrder.length;
+                    transaction.update(draftDocRef, {
+                        currentPickIndex: data.currentPickIndex + 1,
+                        status: isLastPick ? 'finished' : 'drafting',
+                        pickStartTime: isLastPick ? null : Date.now(),
+                    });
+                });
+            } catch (e) {
+                console.error('Advance pick failed', e);
+            }
+        }
+
+        // Shared auto-pick logic: picks for `targetUid`, on the current server-known
+        // pick index (`pickIndex`). `watchlistIds` is only known for the local user's own
+        // team - other clients picking on behalf of an absent team fall back to picking
+        // by need/price alone, since they have no visibility into that team's watchlist.
+        async function performAutoPick(targetUid, pickIndex, watchlistIds) {
             const { players } = appState.draft;
-            const myTeamRoster = players.filter(pl => pl.draftedBy === appState.user.uid);
+            const targetRoster = players.filter(pl => pl.draftedBy === targetUid);
 
             const counts = { Guard: 0, Forward: 0, Center: 0 };
-            myTeamRoster.forEach(p => { counts[p.position]++; });
+            targetRoster.forEach(p => { counts[p.position]++; });
 
-            const availablePlayers = players.filter(p => !p.draftedBy).sort((a,b) => b.credits - a.credits);
+            const availablePlayers = players.filter(p => !p.draftedBy).sort((a, b) => b.credits - a.credits);
+            const watchlistPlayers = watchlistIds ? availablePlayers.filter(p => watchlistIds.includes(p.id)) : [];
 
             // 1. Check watchlist for a needed position
-            const watchlistPlayers = availablePlayers.filter(p => appState.watchlist.includes(p.id));
             for (const player of watchlistPlayers) {
                 if (counts[player.position] < ROSTER_SIZE[player.position]) {
-                    await handleDraftPlayer(player.id);
+                    await handleDraftPlayer(player.id, pickIndex);
                     return;
                 }
             }
@@ -1020,32 +1088,55 @@
             // 2. Check all available players for a needed position
             for (const player of availablePlayers) {
                 if (counts[player.position] < ROSTER_SIZE[player.position]) {
-                    await handleDraftPlayer(player.id);
+                    await handleDraftPlayer(player.id, pickIndex);
                     return;
                 }
             }
-            
+
             // 3. If all required positions are full, draft best available from watchlist (bench)
-            if(watchlistPlayers.length > 0) {
-                await handleDraftPlayer(watchlistPlayers[0].id);
+            if (watchlistPlayers.length > 0) {
+                await handleDraftPlayer(watchlistPlayers[0].id, pickIndex);
                 return;
             }
 
             // 4. If watchlist empty, draft best available overall (bench)
             if (availablePlayers.length > 0) {
-                await handleDraftPlayer(availablePlayers[0].id);
+                await handleDraftPlayer(availablePlayers[0].id, pickIndex);
                 return;
             }
 
             // 5. If no players left, advance pick
-            await updateDoc(draftDocRef, { currentPickIndex: appState.draft.currentPickIndex + 1, pickStartTime: Date.now() });
+            await advancePickWithoutDrafting(pickIndex);
+        }
+
+        // Called on the on-the-clock team's own browser, once their timer hits 0.
+        async function handleAutoPick() {
+            const { currentPickIndex, draftOrder } = appState.draft;
+            const targetUid = draftOrder[currentPickIndex];
+            if (!appState.user || appState.user.uid !== targetUid) return;
+            await performAutoPick(targetUid, currentPickIndex, appState.watchlist);
+        }
+
+        // Called on any OTHER connected client, after a grace period, if the team on the
+        // clock hasn't picked (e.g. their browser isn't open). Re-checks freshly against
+        // the latest known draft state before acting, so a pick that already happened
+        // (by the real team, or by another client that got there first) is a no-op.
+        async function handleTimeoutFallbackPick(scheduledForIndex) {
+            const { status, draftOrder, currentPickIndex, pickStartTime, timePerPick } = appState.draft;
+            if (status !== 'drafting') return;
+            if (currentPickIndex !== scheduledForIndex) return;
+            if (!pickStartTime || Date.now() < pickStartTime + timePerPick * 1000 + AUTO_PICK_GRACE_MS) return;
+
+            const targetUid = draftOrder[currentPickIndex];
+            // No access to the absent team's watchlist from here - pick by need/price only.
+            await performAutoPick(targetUid, currentPickIndex, null);
         }
 
 
         // Drafts the first player from `candidates` (already sorted by preference) that
         // still fits a starting roster slot, falling back to the first overall (bench).
         async function pickFirstFittingPlayer(candidates) {
-            const { players } = appState.draft;
+            const { players, currentPickIndex } = appState.draft;
             const myTeamRoster = players.filter(pl => pl.draftedBy === appState.user.uid);
             const counts = { Guard: 0, Forward: 0, Center: 0 };
             myTeamRoster.forEach(p => { counts[p.position]++; });
@@ -1053,7 +1144,7 @@
             const neededPick = candidates.find(p => counts[p.position] < ROSTER_SIZE[p.position]);
             const playerToDraft = neededPick || candidates[0];
             if (playerToDraft) {
-                await handleDraftPlayer(playerToDraft.id);
+                await handleDraftPlayer(playerToDraft.id, currentPickIndex);
             }
         }
 
@@ -1181,7 +1272,7 @@
                 const starButton = e.target.closest('.watchlist-star');
                 if (draftButton) {
                     const playerId = parseInt(draftButton.dataset.playerId, 10);
-                    handleDraftPlayer(playerId);
+                    handleDraftPlayer(playerId, appState.draft.currentPickIndex);
                 }
                 if (starButton) {
                     const playerId = parseInt(starButton.dataset.playerId, 10);
