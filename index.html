@@ -740,6 +740,7 @@
                 elements.onTheClockTeam.textContent = currentTurnTeam ? currentTurnTeam.name : '...';
                 elements.onTheClockCard.classList.toggle('current-turn-glow', isMyTurn);
                 elements.quickPickControls.classList.toggle('hidden', !isMyTurn);
+                console.log('[DEBUG timer]', { timePerPick, pickStartTime: appState.draft.pickStartTime, now: Date.now() });
                 startTimer(timePerPick);
 
             } else {
