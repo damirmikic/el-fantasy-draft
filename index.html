@@ -600,7 +600,7 @@
             { id: 344, name: "Andrej Bjelic", position: "Guard", team: "Crvena Zvezda Meridianbet Belgrade", credits: 4.0 },
             { id: 345, name: "Vojin Medarevic", position: "Center", team: "Crvena Zvezda Meridianbet Belgrade", credits: 4.0 },
             { id: 346, name: "Uros Mijailovic", position: "Forward", team: "Partizan Mozzart Bet Belgrade", credits: 4.0 },
-        ].map(p => ({...p, draftedBy: null}));
+        ].filter(p => p.position !== 'Head Coach').map(p => ({...p, draftedBy: null}));
 
         // --- APPLICATION STATE ---
         let appState = {
