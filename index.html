@@ -92,8 +92,16 @@
                         <p id="timer-message" class="text-yellow-400 text-xs h-4 mt-1 animate-pulse"></p>
                     </div>
                 </div>
+                <div id="quick-pick-controls" class="hidden mt-4 flex flex-col sm:flex-row gap-3 justify-center">
+                    <button id="quick-pick-watchlist" class="bg-yellow-600/80 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                        ⭐ Draft First on Watchlist
+                    </button>
+                    <button id="quick-pick-price" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                        💰 Draft Top Available (by Price)
+                    </button>
+                </div>
             </div>
-            
+
             <!-- PRE-DRAFT LOBBY (Join form, Admin Controls) -->
             <div id="pre-draft-lobby" class="hidden bg-slate-800 p-6 rounded-xl border border-slate-700 my-6">
                 <div class="text-center mb-4">
@@ -627,6 +635,9 @@
             roundPickStatus: document.getElementById('round-pick-status'),
             onTheClockCard: document.getElementById('on-the-clock-card'),
             onTheClockTeam: document.getElementById('on-the-clock-team'),
+            quickPickControls: document.getElementById('quick-pick-controls'),
+            quickPickWatchlist: document.getElementById('quick-pick-watchlist'),
+            quickPickPrice: document.getElementById('quick-pick-price'),
             timerBar: document.getElementById('timer-bar'),
             timerDisplay: document.getElementById('timer-display'),
             timerMessage: document.getElementById('timer-message'),
@@ -716,6 +727,7 @@
                 elements.roundPickStatus.textContent = `${Math.floor(currentPickIndex / numTeams) + 1} / ${currentPickIndex % numTeams + 1}`;
                 elements.onTheClockTeam.textContent = currentTurnTeam ? currentTurnTeam.name : '...';
                 elements.onTheClockCard.classList.toggle('current-turn-glow', isMyTurn);
+                elements.quickPickControls.classList.toggle('hidden', !isMyTurn);
                 startTimer(timePerPick);
 
             } else {
@@ -1030,6 +1042,48 @@
         }
 
 
+        // Drafts the first player from `candidates` (already sorted by preference) that
+        // still fits a starting roster slot, falling back to the first overall (bench).
+        async function pickFirstFittingPlayer(candidates) {
+            const { players } = appState.draft;
+            const myTeamRoster = players.filter(pl => pl.draftedBy === appState.user.uid);
+            const counts = { Guard: 0, Forward: 0, Center: 0 };
+            myTeamRoster.forEach(p => { counts[p.position]++; });
+
+            const neededPick = candidates.find(p => counts[p.position] < ROSTER_SIZE[p.position]);
+            const playerToDraft = neededPick || candidates[0];
+            if (playerToDraft) {
+                await handleDraftPlayer(playerToDraft.id);
+            }
+        }
+
+        async function handleQuickPickWatchlist() {
+            const { players, status, draftOrder, currentPickIndex } = appState.draft;
+            if (status !== 'drafting' || !appState.user || appState.user.uid !== draftOrder[currentPickIndex]) return;
+
+            const watchlistPlayers = players
+                .filter(p => !p.draftedBy && appState.watchlist.includes(p.id))
+                .sort((a, b) => b.credits - a.credits);
+
+            if (watchlistPlayers.length === 0) {
+                alert("Your watchlist has no available players.");
+                return;
+            }
+            await pickFirstFittingPlayer(watchlistPlayers);
+        }
+
+        async function handleQuickPickPrice() {
+            const { players, status, draftOrder, currentPickIndex } = appState.draft;
+            if (status !== 'drafting' || !appState.user || appState.user.uid !== draftOrder[currentPickIndex]) return;
+
+            const availablePlayers = players
+                .filter(p => !p.draftedBy)
+                .sort((a, b) => b.credits - a.credits);
+
+            if (availablePlayers.length === 0) return;
+            await pickFirstFittingPlayer(availablePlayers);
+        }
+
         async function handleResetDraft() {
             if (!confirm("Are you sure you want to reset the entire draft?")) return;
              await setDoc(draftDocRef, {
@@ -1116,6 +1170,8 @@
             
             elements.joinButton.addEventListener('click', handleJoinDraft);
             elements.startButton.addEventListener('click', handleStartDraft);
+            elements.quickPickWatchlist.addEventListener('click', handleQuickPickWatchlist);
+            elements.quickPickPrice.addEventListener('click', handleQuickPickPrice);
             elements.searchInput.addEventListener('input', (e) => {
                 appState.searchTerm = e.target.value.toLowerCase();
                 renderDraftScreen();
