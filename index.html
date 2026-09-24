@@ -85,7 +85,7 @@
                     </div>
                     <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 text-center">
                         <p class="text-slate-400 text-sm">Time Remaining</p>
-                        <div class="w-full bg-slate-700 rounded-full h-2.5 mt-2">
+                        <div class="w-full bg-slate-700 rounded-full h-2.5 mt-2 overflow-hidden">
                             <div id="timer-bar" class="bg-teal-500 h-2.5 rounded-full timer-bar-inner" style="width: 100%"></div>
                         </div>
                         <p id="timer-display" class="font-mono text-2xl font-bold text-white mt-1">--:--</p>
@@ -931,13 +931,16 @@
             appState.timerInterval = setInterval(() => {
                 const now = Date.now();
                 const elapsed = Math.floor((now - startTime) / 1000);
-                const remaining = Math.max(0, duration - elapsed);
-                
+                // Clamp to [0, duration] - a client clock running slightly behind the
+                // one that started the pick can otherwise make `elapsed` negative,
+                // pushing `remaining` past `duration` and the bar past 100% width.
+                const remaining = Math.min(duration, Math.max(0, duration - elapsed));
+
                 const minutes = Math.floor(remaining / 60);
                 const seconds = remaining % 60;
                 elements.timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                
-                const percentage = (remaining / duration) * 100;
+
+                const percentage = Math.min(100, Math.max(0, (remaining / duration) * 100));
                 elements.timerBar.style.width = `${percentage}%`;
 
                 if(remaining <= 15) {
