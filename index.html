@@ -917,6 +917,12 @@
         // time against the same real start instant instead of whichever device's clock
         // happened to write the pick - a skewed writer's clock could otherwise make the
         // countdown run well past the configured duration for everyone else.
+        // pickStartTimeMillis() accepts either shape: a Firestore Timestamp (current
+        // writes) or a raw number (drafts already in progress when this change shipped).
+        function pickStartTimeMillis(pickStartTime) {
+            return typeof pickStartTime.toMillis === 'function' ? pickStartTime.toMillis() : pickStartTime;
+        }
+
         function startTimer(duration) {
             clearInterval(appState.timerInterval);
             if (!appState.draft.pickStartTime) return;
@@ -930,7 +936,7 @@
                 appState.timerPickIndex = currentIndex;
             }
 
-            const startTime = appState.draft.pickStartTime.toMillis();
+            const startTime = pickStartTimeMillis(appState.draft.pickStartTime);
             let lastMessage = '';
             
             appState.timerInterval = setInterval(() => {
@@ -1133,7 +1139,7 @@
             const { status, draftOrder, currentPickIndex, pickStartTime, timePerPick } = appState.draft;
             if (status !== 'drafting') return;
             if (currentPickIndex !== scheduledForIndex) return;
-            if (!pickStartTime || Date.now() < pickStartTime.toMillis() + timePerPick * 1000 + AUTO_PICK_GRACE_MS) return;
+            if (!pickStartTime || Date.now() < pickStartTimeMillis(pickStartTime) + timePerPick * 1000 + AUTO_PICK_GRACE_MS) return;
 
             const targetUid = draftOrder[currentPickIndex];
             // No access to the absent team's watchlist from here - pick by need/price only.
